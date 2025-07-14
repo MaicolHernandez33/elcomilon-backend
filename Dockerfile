@@ -1,28 +1,21 @@
-# stage 1: build
+# Etapa 1: build
 FROM eclipse-temurin:17-jdk-alpine AS build
-
 WORKDIR /app
 
-# Copiar archivos directamente desde la raíz (ya no hay subcarpeta backend)
-COPY pom.xml mvnw ./
-COPY .mvn .mvn
-
-# Pre-descargar dependencias
+COPY mvnw ./
+COPY .mvn/ .mvn
 RUN chmod +x mvnw && ./mvnw dependency:go-offline
 
-# Copiar código fuente
-COPY src ./src
+COPY pom.xml ./
+RUN ./mvnw dependency:resolve
 
-# Empaquetar aplicación
+COPY src/ ./src/
 RUN ./mvnw clean package -DskipTests
 
-# stage 2: runtime
+# Etapa 2: runtime
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
-
-# Copiar el JAR
 COPY --from=build /app/target/*.jar app.jar
-
 ENV SPRING_PROFILES_ACTIVE=prod
+ENTRYPOINT ["java","-jar","app.jar"]
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
